@@ -7,10 +7,16 @@
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
     "seed": "cd backend && npm run seed",
-    "build": "cd frontend && npm ci --include=dev && npm run build"
   },
-  "keywords": ["inventory", "saas", "mysql", "sequelize", "react", "vite", "tailwind"],
+  "keywords": [
+    "inventory",
+    "saas",
+    "mysql",
+    "sequelize",
+    "react",
+    "vite",
+    "tailwind"
+  ],
   "author": "",
   "license": "ISC"
 }
-
