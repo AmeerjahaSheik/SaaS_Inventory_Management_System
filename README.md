@@ -130,9 +130,13 @@ Open your browser at `http://localhost:5173`.
 - `PUT /api/v1/products/:id` — Update product
 - `DELETE /api/v1/products/:id` — Delete product
 
-### Stock Management
-- `POST /api/v1/stock/products/:id/adjust` — Adjust stock (`in`, `out`, `adjustment`)
-- `GET /api/v1/stock/products/:id/logs` — Get immutable stock audit trail
+### Stock Management & Movements
+- `POST /api/stock-movements` — Record stock movement (`IN`, `OUT`, `ADJUSTMENT`) with optional reference number and reason
+- `GET /api/stock-movements` — Fetch paginated movements (supports `productId`, `movementType`, `startDate`, `endDate`, `search`)
+- `GET /api/stock-movements/:id` — Fetch single movement details (organization-scoped)
+- `GET /api/stock-movements/product/:productId` — Fetch movements for a specific product
+- `POST /api/v1/stock/products/:id/adjust` — Quick stock adjust (`in`, `out`, `adjustment`)
+- `GET /api/v1/stock/products/:id/logs` — Get legacy audit trail
 
 ### Dashboard & Analytics
 - `GET /api/v1/dashboard/summary` — Overview metrics, urgent low-stock items, and recent activity

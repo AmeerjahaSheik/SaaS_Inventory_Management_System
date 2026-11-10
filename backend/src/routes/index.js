@@ -5,6 +5,7 @@ const productRoutes = require('./productRoutes');
 const stockRoutes = require('./stockRoutes');
 const dashboardRoutes = require('./dashboardRoutes');
 const settingsRoutes = require('./settingsRoutes');
+const stockMovementRoutes = require('./stockMovementRoutes');
 
 // API Health Check
 router.get('/health', (req, res) => {
@@ -19,6 +20,7 @@ router.get('/health', (req, res) => {
 router.use('/auth', authRoutes);
 router.use('/products', productRoutes);
 router.use('/stock', stockRoutes);
+router.use('/stock-movements', stockMovementRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/settings', settingsRoutes);
 

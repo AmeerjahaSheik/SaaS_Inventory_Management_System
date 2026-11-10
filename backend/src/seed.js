@@ -1,4 +1,4 @@
-const { sequelize, Organization, User, Product, StockLog } = require('./models');
+const { sequelize, Organization, User, Product, StockLog, StockMovement } = require('./models');
 
 async function seed() {
   console.log('[Seed] Seeding sample data for StockFlow...');
@@ -129,7 +129,7 @@ async function seed() {
           { transaction: t }
         );
 
-        // Create an initial stock receipt log
+        // Create an initial stock receipt log and stock movement
         await StockLog.create(
           {
             organization_id: org.id,
@@ -140,6 +140,21 @@ async function seed() {
             previous_quantity: 0,
             new_quantity: product.quantity,
             reason: 'Initial inventory intake',
+          },
+          { transaction: t }
+        );
+
+        await StockMovement.create(
+          {
+            organization_id: org.id,
+            product_id: product.id,
+            movement_type: 'IN',
+            quantity: product.quantity,
+            previous_quantity: 0,
+            new_quantity: product.quantity,
+            reason: 'Initial inventory intake & stock verification',
+            reference_number: `RCV-2026-${String(Math.floor(Math.random() * 900) + 100)}`,
+            created_by: user.id,
           },
           { transaction: t }
         );

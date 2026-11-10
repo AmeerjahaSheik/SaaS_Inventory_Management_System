@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Boxes,
+  ArrowLeftRight,
   Settings,
   LogOut,
   Building2,
@@ -20,6 +21,7 @@ export default function AppLayout() {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Products & Stock', href: '/products', icon: Boxes },
+    { name: 'Stock Movements', href: '/stock-movements', icon: ArrowLeftRight },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
 

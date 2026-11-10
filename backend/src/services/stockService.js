@@ -1,4 +1,4 @@
-const { sequelize, Product, StockLog, User } = require('../models');
+const { sequelize, Product, StockLog, StockMovement, User } = require('../models');
 
 /**
  * Adjust stock quantity for a product with full transaction safety and audit logging
@@ -71,7 +71,7 @@ async function adjustStock({
     product.quantity = newQuantity;
     await product.save({ transaction: t });
 
-    // 3. Create immutable stock audit log
+    // 3. Create immutable stock audit log and stock movement record
     const stockLog = await StockLog.create(
       {
         organization_id: organizationId,
@@ -82,6 +82,22 @@ async function adjustStock({
         previous_quantity: previousQuantity,
         new_quantity: newQuantity,
         reason: reason ? reason.trim() : null,
+      },
+      { transaction: t }
+    );
+
+    const movementTypeUpper = type === 'in' ? 'IN' : type === 'out' ? 'OUT' : 'ADJUSTMENT';
+    const movementQtyMagnitude = type === 'adjustment' ? Math.abs(parsedQuantity - previousQuantity) : parsedQuantity;
+    await StockMovement.create(
+      {
+        organization_id: organizationId,
+        product_id: productId,
+        movement_type: movementTypeUpper,
+        quantity: movementQtyMagnitude,
+        previous_quantity: previousQuantity,
+        new_quantity: newQuantity,
+        reason: reason ? reason.trim() : null,
+        created_by: userId,
       },
       { transaction: t }
     );

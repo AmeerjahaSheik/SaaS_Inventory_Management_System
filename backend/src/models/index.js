@@ -3,6 +3,7 @@ const Organization = require('./Organization');
 const User = require('./User');
 const Product = require('./Product');
 const StockLog = require('./StockLog');
+const StockMovement = require('./StockMovement');
 
 // Define Relationships
 Organization.hasMany(User, { foreignKey: 'organization_id', as: 'users', onDelete: 'CASCADE' });
@@ -19,6 +20,15 @@ StockLog.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
 
 User.hasMany(StockLog, { foreignKey: 'user_id', as: 'stockLogs', onDelete: 'SET NULL' });
 StockLog.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+Organization.hasMany(StockMovement, { foreignKey: 'organization_id', as: 'stockMovements', onDelete: 'CASCADE' });
+StockMovement.belongsTo(Organization, { foreignKey: 'organization_id', as: 'organization' });
+
+Product.hasMany(StockMovement, { foreignKey: 'product_id', as: 'stockMovements', onDelete: 'CASCADE' });
+StockMovement.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
+
+User.hasMany(StockMovement, { foreignKey: 'created_by', as: 'stockMovements', onDelete: 'SET NULL' });
+StockMovement.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
 
 /**
  * Initializes MySQL database and syncs Sequelize models.
@@ -39,5 +49,6 @@ module.exports = {
   User,
   Product,
   StockLog,
+  StockMovement,
 };
 
