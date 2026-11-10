@@ -20,6 +20,24 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Root Homepage Endpoint
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'StockFlow API is running successfully!',
+    status: 'healthy',
+  });
+});
+
+// Health Endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'StockFlow backend is healthy',
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // API Root Routes
 app.use('/api/v1', routes);
 app.use('/api', routes);
