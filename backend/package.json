@@ -6,9 +6,17 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "build": "echo \"No build step required for Express backend\"",
     "seed": "node src/seed.js"
   },
-  "keywords": ["inventory", "saas", "multi-tenant", "express", "mysql", "sequelize"],
+  "keywords": [
+    "inventory",
+    "saas",
+    "multi-tenant",
+    "express",
+    "mysql",
+    "sequelize"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -26,4 +34,3 @@
     "nodemon": "^3.1.9"
   }
 }
-
