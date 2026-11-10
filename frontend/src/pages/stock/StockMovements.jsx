@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -32,14 +33,24 @@ import EmptyState from '../../components/ui/EmptyState';
 
 export default function StockMovements() {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Filters State
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedProductId, setSelectedProductId] = useState('');
+  const [selectedProductId, setSelectedProductId] = useState(searchParams.get('productId') || '');
   const [selectedType, setSelectedType] = useState('ALL');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Sync with URL query parameter
+  useEffect(() => {
+    const pId = searchParams.get('productId');
+    if (pId) {
+      setSelectedProductId(pId);
+      setCurrentPage(1);
+    }
+  }, [searchParams]);
 
   // Modals State
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);

@@ -260,7 +260,9 @@ export default function Dashboard() {
               <History className="w-4 h-4 text-slate-500" />
               <h3 className="font-bold text-slate-900 text-sm">Recent Stock Movements</h3>
             </div>
-            <span className="text-xs text-slate-400 font-medium">Audit Trail</span>
+            <Link to="/stock-movements" className="text-xs font-semibold text-emerald-600 hover:text-emerald-700">
+              View All Movements →
+            </Link>
           </div>
 
           <div className="divide-y divide-slate-100">
