@@ -15,6 +15,9 @@ const env = {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   },
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  clientUrls: process.env.CLIENT_URL
+    ? process.env.CLIENT_URL.split(',').map((u) => u.trim().replace(/\/$/, '')).filter(Boolean)
+    : ['http://localhost:5173'],
 };
 
 module.exports = env;
