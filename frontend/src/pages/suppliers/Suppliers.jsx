@@ -272,8 +272,8 @@ export default function Suppliers() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2.5">
-            <Truck className="w-7 h-7 text-emerald-600" />
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+            <Truck className="w-7 h-7 text-indigo-600" />
             Supplier Management
           </h1>
           <p className="text-sm text-slate-500 mt-1">
@@ -286,7 +286,7 @@ export default function Suppliers() {
             onClick={() => openCreatePoModal()}
             className="flex items-center gap-2"
           >
-            <ShoppingBag className="w-4 h-4 text-emerald-600" />
+            <ShoppingBag className="w-4 h-4 text-indigo-600" />
             Create Purchase Order
           </Button>
           <Button
@@ -316,7 +316,7 @@ export default function Suppliers() {
           title="Total Suppliers"
           value={pagination.total}
           icon={Truck}
-          color="emerald"
+          color="indigo"
           subtitle="Authorized vendors"
         />
         <StatCard
@@ -337,34 +337,44 @@ export default function Suppliers() {
           title="Fulfilled POs"
           value={purchaseOrders.filter((po) => po.status === 'RECEIVED').length}
           icon={CheckCircle2}
-          color="purple"
+          color="emerald"
           subtitle="Received & stocked"
         />
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-200">
+      <div className="flex border-b border-slate-200 gap-2">
         <button
           onClick={() => setActiveTab('suppliers')}
-          className={`py-3 px-5 text-sm font-semibold border-b-2 flex items-center gap-2 transition ${
+          className={`py-3 px-4 text-sm font-semibold border-b-2 flex items-center gap-2 transition-all ${
             activeTab === 'suppliers'
-              ? 'border-emerald-600 text-emerald-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
+              ? 'border-indigo-600 text-indigo-700 bg-indigo-50/40 rounded-t-lg'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-t-lg'
           }`}
         >
           <Truck className="w-4 h-4" />
-          Suppliers Directory ({pagination.total})
+          <span>Suppliers Directory</span>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+            activeTab === 'suppliers' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'
+          }`}>
+            {pagination.total}
+          </span>
         </button>
         <button
           onClick={() => setActiveTab('purchase-orders')}
-          className={`py-3 px-5 text-sm font-semibold border-b-2 flex items-center gap-2 transition ${
+          className={`py-3 px-4 text-sm font-semibold border-b-2 flex items-center gap-2 transition-all ${
             activeTab === 'purchase-orders'
-              ? 'border-emerald-600 text-emerald-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
+              ? 'border-indigo-600 text-indigo-700 bg-indigo-50/40 rounded-t-lg'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-t-lg'
           }`}
         >
           <ShoppingBag className="w-4 h-4" />
-          Purchase Orders ({purchaseOrders.length})
+          <span>Purchase Orders</span>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+            activeTab === 'purchase-orders' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'
+          }`}>
+            {purchaseOrders.length}
+          </span>
         </button>
       </div>
 
@@ -372,7 +382,7 @@ export default function Suppliers() {
         /* Suppliers Directory Tab */
         <div className="space-y-4">
           {/* Search bar */}
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="relative w-full sm:w-96">
               <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
@@ -383,7 +393,7 @@ export default function Suppliers() {
                   setSearchTerm(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                className="w-full pl-10 pr-4 py-2 border border-slate-200/90 rounded-xl text-sm bg-white placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-xs"
               />
             </div>
             {isFetchingSuppliers && (
@@ -395,7 +405,7 @@ export default function Suppliers() {
           </div>
 
           {/* Table Container */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
             {isLoadingSuppliers ? (
               <div className="p-12 flex justify-center">
                 <Spinner size="lg" />
@@ -418,7 +428,7 @@ export default function Suppliers() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm text-slate-600">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  <thead className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                     <tr>
                       <th className="py-3.5 px-4">Supplier</th>
                       <th className="py-3.5 px-4">Company</th>
@@ -429,17 +439,17 @@ export default function Suppliers() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {suppliers.map((s) => (
-                      <tr key={s.id} className="hover:bg-slate-50/70 transition">
+                      <tr key={s.id} className="hover:bg-slate-50/70 transition-colors">
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 font-bold flex items-center justify-center shrink-0 text-sm">
+                            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-700 font-bold border border-indigo-100 flex items-center justify-center shrink-0 text-sm shadow-xs">
                               {s.supplier_name.charAt(0).toUpperCase()}
                             </div>
                             <div>
                               <div className="font-semibold text-slate-900">
                                 {s.supplier_name}
                               </div>
-                              <div className="text-xs text-slate-400">
+                              <div className="text-[11px] text-slate-400 font-mono">
                                 ID: {s.id.slice(0, 8)}...
                               </div>
                             </div>
@@ -452,7 +462,7 @@ export default function Suppliers() {
                               {s.company_name}
                             </span>
                           ) : (
-                            <span className="text-slate-400 italic">None specified</span>
+                            <span className="text-slate-400 italic text-xs">None specified</span>
                           )}
                         </td>
                         <td className="py-3.5 px-4">
@@ -462,7 +472,7 @@ export default function Suppliers() {
                                 <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                                 <a
                                   href={`mailto:${s.email}`}
-                                  className="text-emerald-600 hover:underline"
+                                  className="text-indigo-600 hover:text-indigo-700 hover:underline"
                                 >
                                   {s.email}
                                 </a>
@@ -499,28 +509,28 @@ export default function Suppliers() {
                             <button
                               onClick={() => openCreatePoModal(s.id)}
                               title="Create Purchase Order for this supplier"
-                              className="p-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition"
+                              className="p-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors"
                             >
                               <ShoppingBag className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => setViewingSupplier(s)}
                               title="View Supplier Details"
-                              className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
+                              className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => openEditModal(s)}
                               title="Edit Supplier"
-                              className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition"
+                              className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
                             >
                               <Edit className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => setDeletingSupplier(s)}
                               title="Delete Supplier"
-                              className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"
+                              className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -535,7 +545,7 @@ export default function Suppliers() {
 
             {/* Pagination Controls */}
             {pagination.totalPages > 1 && (
-              <div className="p-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+              <div className="p-4 border-t border-slate-200/80 flex items-center justify-between text-xs text-slate-500">
                 <span>
                   Showing Page {pagination.page} of {pagination.totalPages} ({pagination.total} suppliers)
                 </span>
@@ -564,7 +574,7 @@ export default function Suppliers() {
       ) : (
         /* Purchase Orders Tab */
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
             {isLoadingPOs ? (
               <div className="p-12 flex justify-center">
                 <Spinner size="lg" />
@@ -580,7 +590,7 @@ export default function Suppliers() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm text-slate-600">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  <thead className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                     <tr>
                       <th className="py-3.5 px-4">PO Number</th>
                       <th className="py-3.5 px-4">Supplier</th>
@@ -593,12 +603,14 @@ export default function Suppliers() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {purchaseOrders.map((po) => (
-                      <tr key={po.id} className="hover:bg-slate-50/70 transition">
-                        <td className="py-3.5 px-4 font-bold text-slate-900">
-                          {po.po_number}
+                      <tr key={po.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-3.5 px-4">
+                          <span className="font-mono text-xs font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200/80 inline-block shadow-2xs">
+                            {po.po_number}
+                          </span>
                         </td>
                         <td className="py-3.5 px-4">
-                          <div className="font-medium text-slate-900">
+                          <div className="font-semibold text-slate-900">
                             {po.supplier ? po.supplier.supplier_name : 'Unknown Vendor'}
                           </div>
                           {po.supplier?.company_name && (
@@ -608,7 +620,7 @@ export default function Suppliers() {
                           )}
                         </td>
                         <td className="py-3.5 px-4 text-xs text-slate-600">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 font-medium">
                             <Calendar className="w-3.5 h-3.5 text-slate-400" />
                             {po.order_date}
                           </div>
@@ -619,25 +631,30 @@ export default function Suppliers() {
                           )}
                         </td>
                         <td className="py-3.5 px-4">
-                          <div className="text-xs space-y-0.5">
+                          <div className="text-xs space-y-1">
                             {(po.items || []).map((it, idx) => (
-                              <div key={idx} className="text-slate-700">
-                                <span className="font-semibold text-slate-900">
+                              <div key={idx} className="text-slate-700 flex items-center gap-1.5">
+                                <span className="font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded text-[11px]">
                                   {it.quantity}x
                                 </span>{' '}
-                                {it.product ? it.product.name : 'Product'} (@ ${Number(it.unit_cost).toFixed(2)})
+                                <span className="font-medium text-slate-800">
+                                  {it.product ? it.product.name : 'Product'}
+                                </span>{' '}
+                                <span className="text-slate-400 text-[11px]">
+                                  (@ ${Number(it.unit_cost).toFixed(2)})
+                                </span>
                               </div>
                             ))}
                           </div>
                         </td>
-                        <td className="py-3.5 px-4 font-bold text-slate-900">
+                        <td className="py-3.5 px-4 font-black text-slate-900">
                           ${Number(po.total_amount).toFixed(2)}
                         </td>
                         <td className="py-3.5 px-4">
                           {po.status === 'RECEIVED' ? (
-                            <Badge variant="success">Received & Stocked</Badge>
+                            <Badge variant="success" dot>Received & Stocked</Badge>
                           ) : po.status === 'ORDERED' ? (
-                            <Badge variant="warning">Ordered / In Transit</Badge>
+                            <Badge variant="warning" dot>Ordered / In Transit</Badge>
                           ) : (
                             <Badge variant="default">{po.status}</Badge>
                           )}
@@ -655,7 +672,7 @@ export default function Suppliers() {
                             </Button>
                           )}
                           {po.status === 'RECEIVED' && (
-                            <span className="text-xs text-emerald-600 font-medium flex items-center justify-end gap-1">
+                            <span className="text-xs text-emerald-600 font-semibold flex items-center justify-end gap-1">
                               <CheckCircle2 className="w-3.5 h-3.5" />
                               Fulfilled
                             </span>
@@ -724,7 +741,7 @@ export default function Suppliers() {
               rows={2}
               placeholder="e.g. 420 Tech Way, Suite 300, San Jose, CA 95110"
               {...registerSupplier('address')}
-              className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-slate-900"
+              className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-900 transition-all shadow-xs"
             />
           </div>
 
@@ -736,7 +753,7 @@ export default function Suppliers() {
               rows={2}
               placeholder="e.g. Net-30 payment terms, contact for bulk discounts..."
               {...registerSupplier('notes')}
-              className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-slate-900"
+              className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-900 transition-all shadow-xs"
             />
           </div>
 
@@ -774,9 +791,9 @@ export default function Suppliers() {
           description="Detailed supplier profile and contact directory."
         >
           <div className="space-y-4 text-sm">
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
-              <div className="flex items-center gap-2 font-semibold text-slate-900">
-                <Building2 className="w-4 h-4 text-emerald-600" />
+            <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3 shadow-xs">
+              <div className="flex items-center gap-2 font-bold text-slate-900">
+                <Building2 className="w-4 h-4 text-indigo-600" />
                 {viewingSupplier.company_name || 'Independent Vendor'}
               </div>
 
@@ -784,7 +801,7 @@ export default function Suppliers() {
                 <div className="flex items-center gap-2">
                   <Mail className="w-4 h-4 text-slate-400" />
                   {viewingSupplier.email ? (
-                    <a href={`mailto:${viewingSupplier.email}`} className="text-emerald-600 hover:underline">
+                    <a href={`mailto:${viewingSupplier.email}`} className="text-indigo-600 hover:text-indigo-700 hover:underline">
                       {viewingSupplier.email}
                     </a>
                   ) : (
@@ -804,7 +821,7 @@ export default function Suppliers() {
               </div>
 
               {viewingSupplier.address && (
-                <div className="flex items-start gap-2 text-xs text-slate-600 pt-1 border-t border-slate-200">
+                <div className="flex items-start gap-2 text-xs text-slate-600 pt-2 border-t border-slate-200/60">
                   <MapPin className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
                   <span>{viewingSupplier.address}</span>
                 </div>
@@ -816,7 +833,7 @@ export default function Suppliers() {
                 <span className="text-xs font-semibold uppercase text-slate-400 block mb-1">
                   Procurement Notes
                 </span>
-                <p className="p-3 bg-white border border-slate-200 rounded-xl text-slate-700 text-xs whitespace-pre-wrap">
+                <p className="p-3 bg-white border border-slate-200/80 rounded-xl text-slate-700 text-xs whitespace-pre-wrap shadow-xs">
                   {viewingSupplier.notes}
                 </p>
               </div>
@@ -831,9 +848,9 @@ export default function Suppliers() {
                   setViewingSupplier(null);
                   openCreatePoModal(s.id);
                 }}
-                className="flex items-center gap-2 text-emerald-700"
+                className="flex items-center gap-2 text-indigo-700 border-indigo-200 hover:bg-indigo-50"
               >
-                <ShoppingBag className="w-4 h-4" />
+                <ShoppingBag className="w-4 h-4 text-indigo-600" />
                 Create PO for {viewingSupplier.supplier_name}
               </Button>
 
@@ -946,7 +963,7 @@ export default function Suppliers() {
                     unit_cost: Number(availableProducts[0]?.cost_price || 0),
                   })
                 }
-                className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Add Item
@@ -956,7 +973,7 @@ export default function Suppliers() {
             {poItemFields.map((field, idx) => (
               <div
                 key={field.id}
-                className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2"
+                className="p-3 bg-slate-50/80 border border-slate-200/80 rounded-xl space-y-2"
               >
                 <div className="flex items-center justify-between text-xs font-medium text-slate-500">
                   <span>Item #{idx + 1}</span>
@@ -979,7 +996,7 @@ export default function Suppliers() {
                     <select
                       value={watchPo(`items.${idx}.product_id`)}
                       onChange={(e) => handleProductSelect(idx, e.target.value)}
-                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-2xs"
                     >
                       <option value="">-- Choose Product --</option>
                       {availableProducts.map((p) => (
@@ -998,7 +1015,7 @@ export default function Suppliers() {
                       type="number"
                       min="1"
                       {...registerPo(`items.${idx}.quantity`)}
-                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-2xs"
                     />
                   </div>
 
@@ -1011,7 +1028,7 @@ export default function Suppliers() {
                       step="0.01"
                       min="0"
                       {...registerPo(`items.${idx}.unit_cost`)}
-                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-2xs"
                     />
                   </div>
                 </div>
@@ -1020,9 +1037,9 @@ export default function Suppliers() {
           </div>
 
           {/* Grand total */}
-          <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl flex items-center justify-between text-sm">
-            <span className="font-semibold text-emerald-900">Total Purchase Value:</span>
-            <span className="text-lg font-bold text-emerald-700">
+          <div className="p-3.5 bg-indigo-50/70 border border-indigo-100 rounded-xl flex items-center justify-between text-sm">
+            <span className="font-semibold text-indigo-900">Total Purchase Value:</span>
+            <span className="text-lg font-black text-indigo-700">
               ${poTotalAmount.toFixed(2)}
             </span>
           </div>
@@ -1035,7 +1052,7 @@ export default function Suppliers() {
               rows={2}
               placeholder="e.g. Standard freight delivery, dock inspection required..."
               {...registerPo('notes')}
-              className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-slate-900"
+              className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-900 transition-all shadow-xs"
             />
           </div>
 

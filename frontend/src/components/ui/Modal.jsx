@@ -33,27 +33,27 @@ export default function Modal({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      {/* Backdrop */}
+      {/* Backdrop with subtle blur */}
       <div
-        className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-200"
         onClick={onClose}
       />
 
       <div className="flex min-h-full items-center justify-center p-4 text-center">
         <div
-          className={`relative w-full ${maxWidth} transform overflow-hidden rounded-2xl bg-white p-6 text-left shadow-2xl transition-all border border-slate-100`}
+          className={`relative w-full ${maxWidth} transform overflow-hidden rounded-2xl bg-white p-6 text-left shadow-2xl transition-all border border-slate-100/80 animate-in fade-in-0 zoom-in-95 duration-150`}
         >
           {/* Header */}
           <div className="flex items-start justify-between pb-4 border-b border-slate-100">
             <div>
-              <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+              <h3 className="text-base font-bold text-slate-900 tracking-tight">{title}</h3>
               {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
             </div>
             <button
               onClick={onClose}
-              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
@@ -64,4 +64,3 @@ export default function Modal({
     </div>
   );
 }
-

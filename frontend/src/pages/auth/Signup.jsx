@@ -42,19 +42,22 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-50 relative flex flex-col justify-center py-12 sm:px-6 lg:px-8 selection:bg-indigo-500 selection:text-white">
+      {/* Soft ambient background glow */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-100/40 via-slate-50 to-slate-50 pointer-events-none -z-10" />
+
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-4 shadow-inner">
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-600 text-white shadow-card shadow-indigo-600/20 mb-3 transition-transform hover:scale-105">
           <Building2 className="w-6 h-6" />
         </div>
-        <h2 className="text-3xl font-extrabold tracking-tight text-white">Create Workspace</h2>
-        <p className="mt-2 text-sm text-slate-400">
+        <h2 className="text-3xl font-black tracking-tight text-slate-900">Create Workspace</h2>
+        <p className="mt-1 text-sm text-slate-500">
           Set up StockFlow for your business in 30 seconds
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
-        <div className="bg-white py-8 px-6 shadow-xl rounded-2xl sm:px-10 border border-slate-100">
+        <div className="bg-white py-8 px-6 shadow-card rounded-2xl sm:px-10 border border-slate-200/80">
           <form className="space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
             <Input
               label="Business / Organization Name"
@@ -93,12 +96,12 @@ export default function Signup() {
               {...register('password')}
             />
 
-            <div className="pt-3">
+            <div className="pt-2">
               <Button
                 type="submit"
                 variant="primary"
                 size="md"
-                className="w-full py-2.5 text-base font-semibold shadow-emerald-500/20"
+                className="w-full py-2.5 text-base font-semibold shadow-xs"
                 isLoading={isSubmitting}
                 icon={ArrowRight}
               >
@@ -112,12 +115,24 @@ export default function Signup() {
               Already have an account?{' '}
               <Link
                 to="/login"
-                className="font-medium text-emerald-600 hover:text-emerald-500 transition-colors"
+                className="font-semibold text-indigo-600 hover:text-indigo-700 transition-colors"
               >
                 Sign in
               </Link>
             </p>
           </div>
+        </div>
+
+        {/* Reassurance pills */}
+        <div className="mt-6 flex items-center justify-center gap-4 text-xs text-slate-400">
+          <span className="flex items-center gap-1">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            Row-Level Partitioned
+          </span>
+          <span>&bull;</span>
+          <span>Zero Card Required</span>
+          <span>&bull;</span>
+          <span>Instant Setup</span>
         </div>
       </div>
     </div>

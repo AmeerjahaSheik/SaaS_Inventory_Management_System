@@ -6,14 +6,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Boxes,
   Search,
-  Filter,
   Plus,
   Edit2,
   Trash2,
   AlertTriangle,
   History,
-  TrendingUp,
   ArrowUpDown,
+  Filter,
   CheckCircle2,
   XCircle,
   Package,
@@ -67,33 +66,40 @@ export default function ProductList() {
         category: selectedCategory,
         is_low_stock: isLowStockOnly,
         page: currentPage,
-        limit: 15,
+        limit: 10,
       });
       return res.data;
     },
   });
 
   // Fetch Categories Query
-  const { data: categories = [] } = useQuery({
-    queryKey: ['categories'],
+  const { data: categoriesData } = useQuery({
+    queryKey: ['product-categories'],
     queryFn: async () => {
       const res = await productsApi.getCategories();
       return res.data;
     },
   });
 
-  // Fetch Product Stock Logs (when history modal open)
-  const { data: stockLogs = [], isLoading: isLoadingLogs } = useQuery({
+  const categories = categoriesData?.categories || [];
+
+  // Fetch Stock Logs for selected item
+  const {
+    data: stockLogsData,
+    isLoading: isLoadingLogs,
+  } = useQuery({
     queryKey: ['stock-logs', historyProduct?.id],
     queryFn: async () => {
       if (!historyProduct?.id) return [];
       const res = await stockApi.getStockLogs(historyProduct.id);
-      return res.data;
+      return res.data?.logs || [];
     },
-    enabled: !!historyProduct,
+    enabled: !!historyProduct?.id,
   });
 
-  // React Hook Form for Create / Edit Product
+  const stockLogs = stockLogsData || [];
+
+  // React Hook Form for Add/Edit Product
   const {
     register,
     handleSubmit,
@@ -108,21 +114,21 @@ export default function ProductList() {
       category: '',
       price: '',
       cost_price: '',
-      quantity: 0,
+      quantity: '',
       low_stock_threshold: '',
     },
   });
 
-  // Sync with URL search params (e.g. from dashboard banner link)
+  // Sync state with URL parameter if redirected from dashboard
   useEffect(() => {
-    const filter = searchParams.get('filter');
-    if (filter === 'low_stock') {
+    const filterParam = searchParams.get('filter');
+    if (filterParam === 'low_stock') {
       setIsLowStockOnly(true);
       setCurrentPage(1);
     }
   }, [searchParams]);
 
-  // Populate form when editingProduct changes
+  // Pre-fill form when editing
   useEffect(() => {
     if (editingProduct) {
       reset({
@@ -133,7 +139,10 @@ export default function ProductList() {
         price: editingProduct.price,
         cost_price: editingProduct.cost_price || '',
         quantity: editingProduct.quantity,
-        low_stock_threshold: editingProduct.low_stock_threshold !== null ? editingProduct.low_stock_threshold : '',
+        low_stock_threshold:
+          editingProduct.low_stock_threshold !== null && editingProduct.low_stock_threshold !== undefined
+            ? editingProduct.low_stock_threshold
+            : '',
       });
     } else {
       reset({
@@ -143,37 +152,48 @@ export default function ProductList() {
         category: '',
         price: '',
         cost_price: '',
-        quantity: 0,
+        quantity: '',
         low_stock_threshold: '',
       });
     }
   }, [editingProduct, reset]);
 
-  // Create / Update Product Mutation
+  // Mutations
   const saveProductMutation = useMutation({
-    mutationFn: async (formData) => {
+    mutationFn: async (data) => {
+      const payload = {
+        ...data,
+        price: parseFloat(data.price),
+        cost_price: data.cost_price !== '' && data.cost_price !== null ? parseFloat(data.cost_price) : null,
+        quantity: parseInt(data.quantity, 10),
+        low_stock_threshold:
+          data.low_stock_threshold !== '' && data.low_stock_threshold !== null
+            ? parseInt(data.low_stock_threshold, 10)
+            : null,
+      };
+
       if (editingProduct) {
-        return await productsApi.updateProduct(editingProduct.id, formData);
+        return await productsApi.updateProduct(editingProduct.id, payload);
       }
-      return await productsApi.createProduct(formData);
+      return await productsApi.createProduct(payload);
     },
     onSuccess: (res) => {
-      toast.success(res.message || 'Product saved successfully!');
+      toast.success(res.message || 'Product saved successfully.');
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: ['product-categories'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       setIsProductModalOpen(false);
       setEditingProduct(null);
     },
     onError: (err) => {
-      toast.error(err.response?.data?.message || 'Failed to save product.');
+      const message = err.response?.data?.message || 'Failed to save product.';
+      toast.error(message);
     },
   });
 
-  // Delete Product Mutation
   const deleteMutation = useMutation({
-    mutationFn: async (productId) => {
-      return await productsApi.deleteProduct(productId);
+    mutationFn: async (id) => {
+      return await productsApi.deleteProduct(id);
     },
     onSuccess: (res) => {
       toast.success(res.message || 'Product deleted successfully.');
@@ -186,7 +206,6 @@ export default function ProductList() {
     },
   });
 
-  // Stock Adjustment Mutation
   const adjustMutation = useMutation({
     mutationFn: async ({ productId, data }) => {
       return await stockApi.adjustStock(productId, data);
@@ -195,6 +214,7 @@ export default function ProductList() {
       toast.success(res.message || 'Stock successfully adjusted.');
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
       setAdjustingProduct(null);
       setAdjustQty('');
       setAdjustReason('');
@@ -232,13 +252,16 @@ export default function ProductList() {
   const defaultThreshold = productsData?.defaultThreshold || 10;
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
+    <div className="space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Products & Stock</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Manage your catalog, monitor inventory levels, and adjust stock.
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
+            <Boxes className="w-6 h-6 text-indigo-600" />
+            Products & Inventory
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Maintain item catalog, monitor threshold levels, and record stock adjustments.
           </p>
         </div>
         <Button
@@ -259,16 +282,16 @@ export default function ProductList() {
         <div className="flex-1 flex flex-col sm:flex-row gap-3">
           {/* Search Input */}
           <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search by name or SKU..."
+              placeholder="Search by product name or SKU..."
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-slate-200/80 bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-900 shadow-xs"
             />
           </div>
 
@@ -279,9 +302,9 @@ export default function ProductList() {
               setSelectedCategory(e.target.value);
               setCurrentPage(1);
             }}
-            className="px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white text-slate-700"
+            className="px-3.5 py-2 text-sm rounded-xl border border-slate-200/80 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 bg-white text-slate-700 shadow-xs"
           >
-            <option value="">All Categories</option>
+            <option value="">All Categories ({categories.length})</option>
             {categories.map((cat) => (
               <option key={cat} value={cat}>
                 {cat}
@@ -296,10 +319,10 @@ export default function ProductList() {
             setIsLowStockOnly(!isLowStockOnly);
             setCurrentPage(1);
           }}
-          className={`flex items-center justify-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border ${
+          className={`flex items-center justify-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all border ${
             isLowStockOnly
               ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
-              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
           }`}
         >
           <AlertTriangle className="w-3.5 h-3.5" />
@@ -312,15 +335,17 @@ export default function ProductList() {
         {isLoading ? (
           <div className="py-20 text-center">
             <Spinner size="lg" />
-            <p className="mt-3 text-sm text-slate-500 font-medium">Loading inventory...</p>
+            <p className="mt-3 text-xs text-slate-500 font-medium">Loading catalog inventory...</p>
           </div>
         ) : isError ? (
           <div className="p-8 text-center text-rose-600">
-            <AlertTriangle className="w-8 h-8 mx-auto mb-2" />
-            <p className="font-semibold">{error?.message || 'Error loading products.'}</p>
-            <Button variant="outline" size="sm" className="mt-4" onClick={() => refetch()}>
-              Retry
-            </Button>
+            <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-rose-500" />
+            <p className="font-semibold text-sm">{error?.message || 'Error loading products.'}</p>
+            <div className="mt-4">
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Retry
+              </Button>
+            </div>
           </div>
         ) : products.length === 0 ? (
           <div className="p-8">
@@ -357,7 +382,7 @@ export default function ProductList() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                <tr className="bg-slate-50/70 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   <th className="py-3.5 px-4">Product / SKU</th>
                   <th className="py-3.5 px-4">Category</th>
                   <th className="py-3.5 px-4">Price / Valuation</th>
@@ -376,11 +401,20 @@ export default function ProductList() {
                   const isLow = product.quantity <= effectiveThreshold;
 
                   return (
-                    <tr key={product.id} className="hover:bg-slate-50/60 transition-colors">
+                    <tr
+                      key={product.id}
+                      className={`hover:bg-slate-50/70 transition-colors ${
+                        isOutOfStock
+                          ? 'border-l-4 border-l-rose-500 bg-rose-50/10'
+                          : isLow
+                          ? 'border-l-4 border-l-amber-500 bg-amber-50/10'
+                          : 'border-l-4 border-l-transparent'
+                      }`}
+                    >
                       {/* Name & SKU */}
                       <td className="py-3.5 px-4">
                         <div className="font-semibold text-slate-900">{product.name}</div>
-                        <div className="text-xs font-mono text-slate-400 mt-0.5">
+                        <div className="text-xs font-mono text-slate-400 mt-0.5 inline-block bg-slate-100 px-1.5 py-0.5 rounded">
                           {product.sku}
                         </div>
                       </td>
@@ -408,10 +442,10 @@ export default function ProductList() {
 
                       {/* Stock Level */}
                       <td className="py-3.5 px-4">
-                        <span className="font-extrabold text-slate-900 text-base">
+                        <span className="font-bold text-slate-900 text-base">
                           {product.quantity}
                         </span>
-                        <span className="text-xs text-slate-400 ml-1.5">
+                        <span className="text-xs text-slate-400 ml-1.5 font-medium">
                           (Min: {effectiveThreshold})
                         </span>
                       </td>
@@ -419,11 +453,11 @@ export default function ProductList() {
                       {/* Status Badge */}
                       <td className="py-3.5 px-4">
                         {isOutOfStock ? (
-                          <Badge variant="danger">Out of Stock</Badge>
+                          <Badge variant="danger" dot>Out of Stock</Badge>
                         ) : isLow ? (
-                          <Badge variant="warning">Low Stock</Badge>
+                          <Badge variant="warning" dot>Low Stock</Badge>
                         ) : (
-                          <Badge variant="success">In Stock</Badge>
+                          <Badge variant="success" dot>In Stock</Badge>
                         )}
                       </td>
 
@@ -438,14 +472,14 @@ export default function ProductList() {
                               setAdjustQty('');
                               setAdjustReason('');
                             }}
-                            className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"
+                            className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
                           >
                             <ArrowUpDown className="w-4 h-4" />
                           </button>
                           <button
                             title="Stock Movement Logs"
                             onClick={() => setHistoryProduct(product)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors"
+                            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
                           >
                             <History className="w-4 h-4" />
                           </button>
@@ -455,14 +489,14 @@ export default function ProductList() {
                               setEditingProduct(product);
                               setIsProductModalOpen(true);
                             }}
-                            className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors"
+                            className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-700 transition-colors"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
                             title="Delete Product"
                             onClick={() => setDeletingProduct(product)}
-                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors"
+                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -480,7 +514,7 @@ export default function ProductList() {
         {pagination.totalPages > 1 && (
           <div className="px-6 py-3.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>
-              Showing page {pagination.page} of {pagination.totalPages} ({pagination.total} total items)
+              Showing page {pagination.page} of {pagination.totalPages} ({pagination.total} total products)
             </span>
             <div className="space-x-2">
               <Button
@@ -511,16 +545,16 @@ export default function ProductList() {
           setIsProductModalOpen(false);
           setEditingProduct(null);
         }}
-        title={editingProduct ? 'Edit Product' : 'Add New Product'}
+        title={editingProduct ? 'Edit Product Details' : 'Add New Product'}
         subtitle={
           editingProduct
             ? `Update properties for SKU: ${editingProduct.sku}`
-            : 'Add a new item to your organization inventory'
+            : 'Register a new item in your inventory catalog'
         }
       >
         <form onSubmit={handleSubmit(onProductSubmit)} className="space-y-4">
           <Input
-            label="Product Name *"
+            label="Product Name"
             placeholder="e.g. Wireless Ergonomic Mouse"
             error={errors.name?.message}
             {...register('name')}
@@ -528,14 +562,14 @@ export default function ProductList() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
-              label="SKU (Stock Keeping Unit) *"
+              label="SKU (Stock Keeping Unit)"
               placeholder="e.g. MOU-WIR-001"
               error={errors.sku?.message}
               {...register('sku')}
             />
             <Input
               label="Category"
-              placeholder="e.g. Electronics, Office Supplies"
+              placeholder="e.g. Electronics, Hardware"
               error={errors.category?.message}
               {...register('category')}
             />
@@ -543,7 +577,7 @@ export default function ProductList() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
-              label="Selling Price ($) *"
+              label="Selling Price ($)"
               type="number"
               step="0.01"
               placeholder="49.99"
@@ -562,7 +596,7 @@ export default function ProductList() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
-              label="Initial Quantity *"
+              label="Initial Quantity"
               type="number"
               min="0"
               disabled={!!editingProduct}
@@ -582,13 +616,13 @@ export default function ProductList() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
               Description (Optional)
             </label>
             <textarea
               rows={3}
               placeholder="Brief details or specifications..."
-              className="w-full rounded-lg border border-slate-300 text-sm p-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              className="w-full rounded-xl border border-slate-200 text-sm p-3 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-slate-900 shadow-xs"
               {...register('description')}
             />
           </div>
@@ -596,7 +630,7 @@ export default function ProductList() {
           <div className="flex justify-end space-x-3 pt-3 border-t border-slate-100">
             <Button
               type="button"
-              variant="secondary"
+              variant="outline"
               size="sm"
               onClick={() => {
                 setIsProductModalOpen(false);
@@ -622,15 +656,17 @@ export default function ProductList() {
         isOpen={!!adjustingProduct}
         onClose={() => setAdjustingProduct(null)}
         title={`Adjust Stock: ${adjustingProduct?.name}`}
-        subtitle={`SKU: ${adjustingProduct?.sku} • Current Stock: ${adjustingProduct?.quantity}`}
+        subtitle={`SKU: ${adjustingProduct?.sku} • Current Stock: ${adjustingProduct?.quantity} units`}
       >
         <form onSubmit={handleAdjustSubmit} className="space-y-4">
-          <div className="flex rounded-lg bg-slate-100 p-1">
+          <div className="flex rounded-xl bg-slate-100 p-1 border border-slate-200/60">
             <button
               type="button"
               onClick={() => setAdjustType('in')}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${
-                adjustType === 'in' ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                adjustType === 'in'
+                  ? 'bg-white text-emerald-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               + Stock In (Add)
@@ -638,8 +674,10 @@ export default function ProductList() {
             <button
               type="button"
               onClick={() => setAdjustType('out')}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${
-                adjustType === 'out' ? 'bg-white text-rose-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                adjustType === 'out'
+                  ? 'bg-white text-rose-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               - Stock Out (Remove)
@@ -647,11 +685,13 @@ export default function ProductList() {
             <button
               type="button"
               onClick={() => setAdjustType('adjustment')}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${
-                adjustType === 'adjustment' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                adjustType === 'adjustment'
+                  ? 'bg-white text-indigo-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Set Exact
+              Set Exact Count
             </button>
           </div>
 
@@ -678,19 +718,19 @@ export default function ProductList() {
               <span>Projected New Stock:</span>
               <span className="font-bold text-slate-900 text-sm">
                 {adjustType === 'in'
-                  ? adjustingProduct.quantity + (parseInt(adjustQty, 10) || 0)
+                  ? (adjustingProduct?.quantity || 0) + (parseInt(adjustQty, 10) || 0)
                   : adjustType === 'out'
-                  ? Math.max(0, adjustingProduct.quantity - (parseInt(adjustQty, 10) || 0))
+                  ? Math.max(0, (adjustingProduct?.quantity || 0) - (parseInt(adjustQty, 10) || 0))
                   : parseInt(adjustQty, 10) || 0}{' '}
                 units
               </span>
             </div>
           )}
 
-          <div className="flex justify-end space-x-3 pt-3">
+          <div className="flex justify-end space-x-3 pt-3 border-t border-slate-100">
             <Button
               type="button"
-              variant="secondary"
+              variant="outline"
               size="sm"
               onClick={() => setAdjustingProduct(null)}
             >
@@ -762,7 +802,7 @@ export default function ProductList() {
           <div className="flex justify-end pt-3 border-t border-slate-100">
             <Button
               type="button"
-              variant="secondary"
+              variant="outline"
               size="sm"
               onClick={() => setHistoryProduct(null)}
             >
@@ -783,14 +823,14 @@ export default function ProductList() {
           <p className="text-sm text-slate-600">
             Are you sure you want to permanently delete{' '}
             <span className="font-bold text-slate-900">{deletingProduct?.name}</span> (SKU:{' '}
-            <span className="font-mono">{deletingProduct?.sku}</span>)? All associated stock
+            <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded">{deletingProduct?.sku}</span>)? All associated stock
             logs will also be deleted.
           </p>
 
-          <div className="flex justify-end space-x-3 pt-3">
+          <div className="flex justify-end space-x-3 pt-3 border-t border-slate-100">
             <Button
               type="button"
-              variant="secondary"
+              variant="outline"
               size="sm"
               onClick={() => setDeletingProduct(null)}
             >
@@ -811,4 +851,3 @@ export default function ProductList() {
     </div>
   );
 }
-

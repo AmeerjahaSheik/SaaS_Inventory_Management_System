@@ -6,7 +6,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
   ArrowLeftRight,
   Search,
-  Filter,
   Plus,
   ArrowUpRight,
   ArrowDownRight,
@@ -103,32 +102,55 @@ export default function StockMovements() {
     queryKey: [
       'stock-movements',
       {
+        search: searchTerm,
         productId: selectedProductId,
-        movementType: selectedType,
+        type: selectedType,
         startDate,
         endDate,
-        search: searchTerm,
         page: currentPage,
       },
     ],
     queryFn: async () => {
-      const res = await stockMovementApi.getMovements({
-        productId: selectedProductId,
-        movementType: selectedType,
-        startDate,
-        endDate,
-        search: searchTerm,
+      const params = {
+        search: searchTerm || undefined,
+        productId: selectedProductId || undefined,
+        type: selectedType !== 'ALL' ? selectedType : undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
         page: currentPage,
         limit: 15,
-      });
+      };
+      const res = await stockMovementApi.getMovements(params);
       return res.data;
     },
   });
 
-  // Record Movement Mutation
+  const movements = movementsResponse?.movements || [];
+  const pagination = movementsResponse?.pagination || { total: 0, page: 1, totalPages: 1 };
+
+  // Calculate projected balance live in the modal
+  let projectedStock = null;
+  if (activeProductObj && watchedQty !== '' && !isNaN(parseInt(watchedQty, 10))) {
+    const qty = parseInt(watchedQty, 10);
+    if (watchedType === 'IN') {
+      projectedStock = activeProductObj.quantity + qty;
+    } else if (watchedType === 'OUT') {
+      projectedStock = activeProductObj.quantity - qty;
+    } else if (watchedType === 'ADJUSTMENT') {
+      projectedStock = qty;
+    }
+  }
+
+  // Record Stock Movement Mutation
   const recordMutation = useMutation({
     mutationFn: async (formData) => {
-      return await stockMovementApi.createMovement(formData);
+      return await stockMovementApi.createMovement({
+        productId: formData.productId,
+        movementType: formData.movementType,
+        quantity: parseInt(formData.quantity, 10),
+        reason: formData.reason || null,
+        referenceNumber: formData.referenceNumber || null,
+      });
     },
     onSuccess: (res) => {
       toast.success(res.message || 'Stock movement recorded successfully!');
@@ -137,10 +159,17 @@ export default function StockMovements() {
       queryClient.invalidateQueries({ queryKey: ['products-for-selector'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       setIsRecordModalOpen(false);
-      reset();
+      reset({
+        productId: '',
+        movementType: 'IN',
+        quantity: '',
+        reason: '',
+        referenceNumber: '',
+      });
     },
     onError: (err) => {
-      toast.error(err.response?.data?.message || 'Failed to record stock movement.');
+      const msg = err.response?.data?.message || 'Failed to record movement.';
+      toast.error(msg);
     },
   });
 
@@ -155,44 +184,30 @@ export default function StockMovements() {
     setStartDate('');
     setEndDate('');
     setCurrentPage(1);
+    setSearchParams({});
   };
 
   const hasActiveFilters =
-    searchTerm || selectedProductId || selectedType !== 'ALL' || startDate || endDate;
-
-  const movements = movementsResponse?.movements || [];
-  const pagination = movementsResponse?.pagination || { total: 0, page: 1, totalPages: 1 };
-
-  // Calculate live preview stock
-  let projectedStock = null;
-  if (activeProductObj && watchedQty !== '' && !isNaN(parseInt(watchedQty, 10))) {
-    const qtyVal = parseInt(watchedQty, 10);
-    if (watchedType === 'IN') {
-      projectedStock = activeProductObj.quantity + qtyVal;
-    } else if (watchedType === 'OUT') {
-      projectedStock = activeProductObj.quantity - qtyVal;
-    } else if (watchedType === 'ADJUSTMENT') {
-      projectedStock = qtyVal;
-    }
-  }
+    searchTerm !== '' ||
+    selectedProductId !== '' ||
+    selectedType !== 'ALL' ||
+    startDate !== '' ||
+    endDate !== '';
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
+    <div className="space-y-6">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
-              <ArrowLeftRight className="w-4 h-4" />
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Stock Movements</h1>
-          </div>
-          <p className="text-sm text-slate-500 mt-1">
-            Complete audit trail of all inventory receipts, dispatches, and stock adjustments.
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
+            <ArrowLeftRight className="w-6 h-6 text-indigo-600" />
+            Stock Movements History
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Complete transaction history and immutable audit trail of every inward, outward, and recount event.
           </p>
         </div>
-
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2.5">
           <Button
             variant="outline"
             size="sm"
@@ -200,7 +215,7 @@ export default function StockMovements() {
             isLoading={isFetching}
             icon={RefreshCw}
           >
-            Refresh
+            Refresh Logs
           </Button>
           <Button
             variant="primary"
@@ -208,7 +223,7 @@ export default function StockMovements() {
             icon={Plus}
             onClick={() => {
               reset({
-                productId: productsList[0]?.id || '',
+                productId: selectedProductId || '',
                 movementType: 'IN',
                 quantity: '',
                 reason: '',
@@ -222,25 +237,25 @@ export default function StockMovements() {
         </div>
       </div>
 
-      {/* Filter & Search Bar */}
+      {/* Filter Bar */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          {/* Search Input */}
-          <div className="relative lg:col-span-2">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Keyword Search */}
+          <div className="relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search SKU, product, reason, reference..."
+              placeholder="Search by reason or reference..."
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              className="w-full pl-10 pr-3.5 py-2 text-sm rounded-xl border border-slate-200/80 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 bg-white text-slate-900 shadow-xs"
             />
           </div>
 
-          {/* Product Filter Dropdown */}
+          {/* Product Dropdown */}
           <div>
             <select
               value={selectedProductId}
@@ -248,9 +263,9 @@ export default function StockMovements() {
                 setSelectedProductId(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white text-slate-700"
+              className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-200/80 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 bg-white text-slate-700 shadow-xs"
             >
-              <option value="">All Products</option>
+              <option value="">All Products ({productsList.length})</option>
               {productsList.map((prod) => (
                 <option key={prod.id} value={prod.id}>
                   {prod.name} ({prod.sku})
@@ -267,10 +282,10 @@ export default function StockMovements() {
                 setSelectedType(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white text-slate-700 font-medium"
+              className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-200/80 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 bg-white text-slate-700 shadow-xs font-medium"
             >
               <option value="ALL">All Types</option>
-              <option value="IN">IN (Receipts)</option>
+              <option value="IN">IN (Intakes / POs)</option>
               <option value="OUT">OUT (Dispatches)</option>
               <option value="ADJUSTMENT">ADJUSTMENT (Recounts)</option>
             </select>
@@ -293,10 +308,10 @@ export default function StockMovements() {
         </div>
 
         {/* Date Range Row */}
-        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100 text-xs">
-          <div className="flex items-center space-x-1.5 text-slate-500">
+        <div className="flex flex-wrap items-center gap-3 pt-2.5 border-t border-slate-100 text-xs">
+          <div className="flex items-center space-x-1.5 text-slate-500 font-semibold uppercase tracking-wider text-[11px]">
             <Calendar className="w-3.5 h-3.5" />
-            <span className="font-semibold uppercase tracking-wider">Date Range:</span>
+            <span>Date Range:</span>
           </div>
           <div className="flex items-center space-x-2">
             <input
@@ -306,7 +321,7 @@ export default function StockMovements() {
                 setStartDate(e.target.value);
                 setCurrentPage(1);
               }}
-              className="px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
             />
             <span className="text-slate-400">to</span>
             <input
@@ -316,7 +331,7 @@ export default function StockMovements() {
                 setEndDate(e.target.value);
                 setCurrentPage(1);
               }}
-              className="px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
             />
           </div>
         </div>
@@ -327,14 +342,16 @@ export default function StockMovements() {
         {isLoading ? (
           <div className="py-20 text-center">
             <Spinner size="lg" />
-            <p className="mt-3 text-sm text-slate-500 font-medium">Loading stock movements...</p>
+            <p className="mt-3 text-xs text-slate-500 font-medium">Loading stock audit logs...</p>
           </div>
         ) : isError ? (
           <div className="p-8 text-center text-rose-600">
-            <p className="font-semibold">{error?.message || 'Error loading stock movements.'}</p>
-            <Button variant="outline" size="sm" className="mt-4" onClick={() => refetch()}>
-              Retry
-            </Button>
+            <p className="font-semibold text-sm">{error?.message || 'Error loading stock movements.'}</p>
+            <div className="mt-4">
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Retry
+              </Button>
+            </div>
           </div>
         ) : movements.length === 0 ? (
           <div className="p-8">
@@ -361,7 +378,7 @@ export default function StockMovements() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                <tr className="bg-slate-50/70 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   <th className="py-3.5 px-4">Date / Time</th>
                   <th className="py-3.5 px-4">Product / SKU</th>
                   <th className="py-3.5 px-4">Type</th>
@@ -380,7 +397,7 @@ export default function StockMovements() {
                   return (
                     <tr
                       key={m.id}
-                      className="hover:bg-slate-50/60 transition-colors cursor-pointer"
+                      className="hover:bg-slate-50/70 transition-colors cursor-pointer"
                       onClick={() => setSelectedMovementForDetail(m)}
                     >
                       {/* Date / Time */}
@@ -405,7 +422,7 @@ export default function StockMovements() {
                         <div className="font-semibold text-slate-900">
                           {m.product?.name || 'Unknown Product'}
                         </div>
-                        <div className="text-xs font-mono text-slate-400 mt-0.5">
+                        <div className="text-xs font-mono text-slate-400 mt-0.5 inline-block bg-slate-100 px-1.5 py-0.5 rounded">
                           {m.product?.sku}
                         </div>
                       </td>
@@ -413,17 +430,17 @@ export default function StockMovements() {
                       {/* Movement Type */}
                       <td className="py-3.5 px-4">
                         {m.movement_type === 'IN' ? (
-                          <Badge variant="success" className="gap-1">
+                          <Badge variant="success" dot className="gap-1">
                             <ArrowUpRight className="w-3 h-3" />
                             <span>IN</span>
                           </Badge>
                         ) : m.movement_type === 'OUT' ? (
-                          <Badge variant="danger" className="gap-1">
+                          <Badge variant="danger" dot className="gap-1">
                             <ArrowDownRight className="w-3 h-3" />
                             <span>OUT</span>
                           </Badge>
                         ) : (
-                          <Badge variant="info" className="gap-1">
+                          <Badge variant="info" dot className="gap-1">
                             <ArrowLeftRight className="w-3 h-3" />
                             <span>ADJUSTMENT</span>
                           </Badge>
@@ -433,7 +450,7 @@ export default function StockMovements() {
                       {/* Quantity */}
                       <td className="py-3.5 px-4">
                         <span
-                          className={`font-black text-sm ${
+                          className={`font-bold text-sm ${
                             isPositive
                               ? 'text-emerald-600'
                               : isNegative
@@ -450,7 +467,7 @@ export default function StockMovements() {
                         <div className="flex items-center space-x-1.5 text-xs">
                           <span className="font-medium text-slate-500">{m.previous_quantity}</span>
                           <span className="text-slate-300">→</span>
-                          <span className="font-extrabold text-slate-900">{m.new_quantity}</span>
+                          <span className="font-bold text-slate-900">{m.new_quantity}</span>
                           <span className="text-[10px] text-slate-400">units</span>
                         </div>
                       </td>
@@ -536,17 +553,17 @@ export default function StockMovements() {
         <form onSubmit={handleSubmit(onRecordSubmit)} className="space-y-4">
           {/* Product Select */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
               Select Product *
             </label>
             <select
               {...register('productId')}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
+              className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200/80 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 bg-white text-slate-900 shadow-xs"
             >
               <option value="">-- Choose a Product --</option>
               {productsList.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name} (SKU: {p.sku}) — {p.quantity} currently in stock
+                  {p.name} (SKU: {p.sku}) — {p.quantity} on shelf
                 </option>
               ))}
             </select>
@@ -557,10 +574,10 @@ export default function StockMovements() {
 
           {/* Current Stock Banner */}
           {activeProductObj && (
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs flex items-center justify-between">
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/70 text-xs flex items-center justify-between">
               <div>
                 <span className="text-slate-500">Current Stock Level:</span>
-                <span className="font-extrabold text-slate-900 ml-1.5 text-sm">
+                <span className="font-bold text-slate-900 ml-1.5 text-sm">
                   {activeProductObj.quantity} units
                 </span>
               </div>
@@ -570,7 +587,7 @@ export default function StockMovements() {
 
           {/* Movement Type Toggle */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
               Movement Type *
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -605,7 +622,7 @@ export default function StockMovements() {
                 onClick={() => setValue('movementType', 'ADJUSTMENT')}
                 className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center space-x-1.5 ${
                   watchedType === 'ADJUSTMENT'
-                    ? 'bg-sky-50 border-sky-500 text-sky-700 shadow-xs'
+                    ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-xs'
                     : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                 }`}
               >
@@ -638,7 +655,7 @@ export default function StockMovements() {
               }`}
             >
               <span>Projected Balance After Movement:</span>
-              <span className="font-extrabold text-sm">
+              <span className="font-bold text-sm">
                 {projectedStock < 0 ? 'Negative Stock (Not Allowed!)' : `${projectedStock} units`}
               </span>
             </div>
@@ -655,7 +672,7 @@ export default function StockMovements() {
 
             <Input
               label="Reason / Notes"
-              placeholder="e.g. Supplier intake, damaged goods"
+              placeholder="e.g. Supplier intake, physical recount"
               error={errors.reason?.message}
               {...register('reason')}
             />
@@ -664,7 +681,7 @@ export default function StockMovements() {
           <div className="flex justify-end space-x-3 pt-3 border-t border-slate-100">
             <Button
               type="button"
-              variant="secondary"
+              variant="outline"
               size="sm"
               onClick={() => setIsRecordModalOpen(false)}
             >
@@ -687,17 +704,17 @@ export default function StockMovements() {
         isOpen={!!selectedMovementForDetail}
         onClose={() => setSelectedMovementForDetail(null)}
         title="Movement Audit Record"
-        subtitle={`ID: ${selectedMovementForDetail?.id}`}
+        subtitle={`Audit ID: ${selectedMovementForDetail?.id}`}
       >
         {selectedMovementForDetail && (
           <div className="space-y-4 text-xs">
             {/* Header info */}
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-semibold uppercase tracking-wider text-slate-400">
                   Product
                 </span>
-                <span className="font-mono text-slate-500">
+                <span className="font-mono text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
                   {selectedMovementForDetail.product?.sku}
                 </span>
               </div>
@@ -708,17 +725,17 @@ export default function StockMovements() {
 
             {/* Metrics Grid */}
             <div className="grid grid-cols-3 gap-3 text-center">
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
                 <p className="text-[10px] uppercase font-bold text-slate-400">Previous</p>
-                <p className="text-base font-extrabold text-slate-700 mt-1">
+                <p className="text-base font-bold text-slate-700 mt-1">
                   {selectedMovementForDetail.previous_quantity}
                 </p>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
                 <p className="text-[10px] uppercase font-bold text-slate-400">Change</p>
                 <p
-                  className={`text-base font-extrabold mt-1 ${
+                  className={`text-base font-bold mt-1 ${
                     selectedMovementForDetail.movement_type === 'IN'
                       ? 'text-emerald-600'
                       : selectedMovementForDetail.movement_type === 'OUT'
@@ -726,65 +743,59 @@ export default function StockMovements() {
                       : 'text-slate-800'
                   }`}
                 >
-                  {selectedMovementForDetail.movement_type === 'IN'
-                    ? `+${selectedMovementForDetail.quantity}`
-                    : selectedMovementForDetail.movement_type === 'OUT'
-                    ? `-${selectedMovementForDetail.quantity}`
-                    : `±${selectedMovementForDetail.quantity}`}
+                  {selectedMovementForDetail.movement_type === 'IN' ? '+' : ''}
+                  {selectedMovementForDetail.movement_type === 'OUT' ? '-' : ''}
+                  {selectedMovementForDetail.quantity}
                 </p>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
                 <p className="text-[10px] uppercase font-bold text-slate-400">New Balance</p>
-                <p className="text-base font-extrabold text-slate-900 mt-1">
+                <p className="text-base font-bold text-slate-900 mt-1">
                   {selectedMovementForDetail.new_quantity}
                 </p>
               </div>
             </div>
 
-            {/* Details List */}
-            <div className="divide-y divide-slate-100">
-              <div className="py-2.5 flex justify-between">
-                <span className="text-slate-400 font-medium">Movement Type:</span>
-                <span className="font-bold text-slate-800">
-                  {selectedMovementForDetail.movement_type}
-                </span>
+            {/* Additional Metadata */}
+            <div className="space-y-2.5 pt-2 border-t border-slate-100">
+              <div className="flex justify-between py-1 border-b border-slate-50">
+                <span className="text-slate-500 font-medium">Movement Type:</span>
+                <span className="font-bold text-slate-900">{selectedMovementForDetail.movement_type}</span>
               </div>
 
-              <div className="py-2.5 flex justify-between">
-                <span className="text-slate-400 font-medium">Reference Number:</span>
-                <span className="font-mono font-bold text-slate-800">
+              <div className="flex justify-between py-1 border-b border-slate-50">
+                <span className="text-slate-500 font-medium">Reference Number:</span>
+                <span className="font-mono text-slate-900">
                   {selectedMovementForDetail.reference_number || 'N/A'}
                 </span>
               </div>
 
-              <div className="py-2.5 flex justify-between">
-                <span className="text-slate-400 font-medium">Reason / Description:</span>
-                <span className="font-semibold text-slate-800">
-                  {selectedMovementForDetail.reason || 'None'}
+              <div className="flex justify-between py-1 border-b border-slate-50">
+                <span className="text-slate-500 font-medium">Reason:</span>
+                <span className="text-slate-900 font-medium">
+                  {selectedMovementForDetail.reason || 'None provided'}
                 </span>
               </div>
 
-              <div className="py-2.5 flex justify-between">
-                <span className="text-slate-400 font-medium">Recorded Timestamp:</span>
-                <span className="text-slate-700">
+              <div className="flex justify-between py-1 border-b border-slate-50">
+                <span className="text-slate-500 font-medium">Logged By:</span>
+                <span className="text-slate-900 font-medium">
+                  {selectedMovementForDetail.creator?.name || 'User'}
+                </span>
+              </div>
+
+              <div className="flex justify-between py-1">
+                <span className="text-slate-500 font-medium">Timestamp:</span>
+                <span className="text-slate-900 font-mono">
                   {new Date(selectedMovementForDetail.created_at).toLocaleString()}
-                </span>
-              </div>
-
-              <div className="py-2.5 flex justify-between">
-                <span className="text-slate-400 font-medium">Operator / User:</span>
-                <span className="font-bold text-slate-800">
-                  {selectedMovementForDetail.creator?.name || 'Administrator'} (
-                  {selectedMovementForDetail.creator?.email || 'System'})
                 </span>
               </div>
             </div>
 
             <div className="flex justify-end pt-3 border-t border-slate-100">
               <Button
-                type="button"
-                variant="secondary"
+                variant="outline"
                 size="sm"
                 onClick={() => setSelectedMovementForDetail(null)}
               >
@@ -797,4 +808,3 @@ export default function StockMovements() {
     </div>
   );
 }
-
