@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Boxes,
   ArrowLeftRight,
+  Truck,
   Settings,
   LogOut,
   Building2,
@@ -22,6 +23,7 @@ export default function AppLayout() {
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Products & Stock', href: '/products', icon: Boxes },
     { name: 'Stock Movements', href: '/stock-movements', icon: ArrowLeftRight },
+    { name: 'Suppliers', href: '/suppliers', icon: Truck },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
 

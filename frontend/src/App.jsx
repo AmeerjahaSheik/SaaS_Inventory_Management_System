@@ -12,6 +12,7 @@ import Signup from './pages/auth/Signup';
 import Dashboard from './pages/dashboard/Dashboard';
 import ProductList from './pages/products/ProductList';
 import StockMovements from './pages/stock/StockMovements';
+import Suppliers from './pages/suppliers/Suppliers';
 import Settings from './pages/settings/Settings';
 
 export default function App() {
@@ -29,6 +30,7 @@ export default function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/products" element={<ProductList />} />
             <Route path="/stock-movements" element={<StockMovements />} />
+            <Route path="/suppliers" element={<Suppliers />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
         </Route>
